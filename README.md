@@ -23,7 +23,7 @@ ParserLenguaje/
 
 ## Uso del programa
 
-1. Ejecutar el programa.
+1. Ejecutar el programa desde main.java.
 2. Introducir el código en **varias líneas**.
 3. Escribir `FIN` para finalizar la entrada y comenzar el análisis.
 
