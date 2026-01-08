@@ -1,15 +1,15 @@
 // Parser.java
-// Parser descendente recursivo simple que sigue la gramática del enunciado:
+// Parser descendente sencillo. Gramática soportada:
 // StmtList → Stmt StmtList | ε
-// Stmt → ID '=' Expr ';' | 'print' '(' Expr ')' ';'
-// Expr → Term { ('+' | '-') Term }
-// Term → Factor { ('*' | '/') Factor }
-// Factor → ID | NUM | '(' Expr ')'
+// Stmt → 'int' ID ('=' Expr)? ';'    <-- añadido (declaración con/ sin inicialización)
+//       | ID '=' Expr ';'
+//       | 'print' '(' Expr ')' ';'
+// Expr/Term/Factor como antes.
 
 public class Parser {
     private Token[] tokens;
     private int pos;
-    private String error; // mensaje del primer error detectado
+    private String error;
 
     public Parser(Token[] tokens) {
         this.tokens = (tokens == null) ? new Token[0] : tokens;
@@ -17,7 +17,6 @@ public class Parser {
         this.error = null;
     }
 
-    // parsea la secuencia completa. Devuelve true si no hay errores.
     public boolean parse() {
         parseStmtList();
 
@@ -44,13 +43,32 @@ public class Parser {
     private void parseStmt() {
         if (error != null) return;
 
+        // Declaración: int ID ( = Expr )? ;
+        if (lookLex("int")) {
+            pos++; // consumir 'int'
+            if (!lookType(TipoToken.IDENTIFICADOR)) {
+                error = "se esperaba IDENTIFICADOR después de 'int' (llegó '" + currentLexema() + "')";
+                return;
+            }
+            pos++; // consumir ID
+
+            // si hay inicialización: =
+            if (lookLex("=")) {
+                pos++; // consumir =
+                parseExpr();
+            }
+
+            consumeLex(";", "falta ';' al final de la declaración");
+            return;
+        }
+
         // print ( Expr ) ;
         if (lookLex("print")) {
-            consumeLex("print", "se esperaba 'print'");
+            pos++;
             consumeLex("(", "se esperaba '(' después de 'print'");
             parseExpr();
             consumeLex(")", "falta ')' en print");
-            consumeLex(";", "falta ';' al final de la sentencia print");
+            consumeLex(";", "falta ';' al final del print");
             return;
         }
 
@@ -73,7 +91,7 @@ public class Parser {
     private void parseExpr() {
         parseTerm();
         while (error == null && (lookLex("+") || lookLex("-"))) {
-            pos++; // consumir operador
+            pos++;
             parseTerm();
         }
     }
@@ -81,7 +99,7 @@ public class Parser {
     private void parseTerm() {
         parseFactor();
         while (error == null && (lookLex("*") || lookLex("/"))) {
-            pos++; // consumir operador
+            pos++;
             parseFactor();
         }
     }
@@ -90,12 +108,12 @@ public class Parser {
         if (error != null) return;
 
         if (lookType(TipoToken.LITERAL_NUMERICO) || lookType(TipoToken.IDENTIFICADOR)) {
-            pos++; // consumir NUM o ID
+            pos++;
             return;
         }
 
         if (lookLex("(")) {
-            pos++; // consumir '('
+            pos++;
             parseExpr();
             consumeLex(")", "Paréntesis no balanceados: falta ')'");
             return;
@@ -119,14 +137,13 @@ public class Parser {
 
     private void consumeLex(String lex, String msg) {
         if (error != null) return;
-        if (pos >= tokens.length) {
-            error = msg + " (fin de entrada)";
-            return;
-        }
-        if (!tokens[pos].lexema.equals(lex)) {
-            error = msg + " (llegó '" + tokens[pos].lexema + "')";
-            return;
-        }
+        if (pos >= tokens.length) { error = msg + " (fin de entrada)"; return; }
+        if (!tokens[pos].lexema.equals(lex)) { error = msg + " (llegó '" + tokens[pos].lexema + "')"; return; }
         pos++;
+    }
+
+    private String currentLexema() {
+        if (pos < tokens.length) return tokens[pos].lexema;
+        return "<EOF>";
     }
 }
